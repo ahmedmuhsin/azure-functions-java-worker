@@ -119,11 +119,11 @@ public final class BindingDataStore {
 		});
     }
 
-    public Optional<BindingData> getOrAddDataTarget(UUID outputId, String name, Type target, boolean hasImplicitOutput) {
+    public Optional<BindingData> getOrAddDataTarget(UUID outputId, String name, Type target, boolean hasImplicitOutput, boolean isSkillTrigger) {
         DataTarget output = null;
         if (this.isDataTargetValid(name, target)) {
             output = this.getTarget(outputId).get(name);
-            if (output == null && (this.isDefinitionOutput(name) || hasImplicitOutput)) {
+            if (output == null && (this.isDefinitionOutput(name) || (hasImplicitOutput || isSkillTrigger))) {
                 this.getTarget(outputId).put(name, output = rpcDataTargetFromType(target));
             }
         }
