@@ -38,7 +38,7 @@ public class ParameterResolver {
                 String paramBindingNameAnnotation = param.getBindingNameAnnotation();
                 Optional<BindingData> argument;
                 if (OutputBinding.class.isAssignableFrom(TypeUtils.getRawType(paramType, null))) {
-                    argument = dataStore.getOrAddDataTarget(invokeInfo.getOutputsId(), paramName, paramType, false, false);
+                    argument = dataStore.getOrAddDataTarget(invokeInfo.getOutputsId(), paramName, paramType, false);
                 }
                 else if (paramName != null && !paramName.isEmpty()) {
                     argument = executionContextDataSource.getBindingData(paramName, paramType);
@@ -53,14 +53,10 @@ public class ParameterResolver {
                 invokeInfo.appendArgument(actualArg.getValue());
             }
 
-            boolean isSkillTrigger = method.getMethod().getDeclaringClass().getName().equalsIgnoreCase("com.azfs.AssistantSkills");
-            // For function annotated with @HasImplicitOutput, we should allow it to send back data even function's return type is void
-            // Reference to https://github.com/microsoft/durabletask-java/issues/126
-            if (!method.getMethod().getReturnType().equals(void.class)
-                    && !method.getMethod().getReturnType().equals(Void.class)
-                    || method.hasImplicitOutput()) {
-                dataStore.getOrAddDataTarget(invokeInfo.getOutputsId(), BindingDataStore.RETURN_NAME, method.getMethod().getReturnType(), method.hasImplicitOutput(), isSkillTrigger);
+            if (method.hasEffectiveReturnType()){
+                dataStore.getOrAddDataTarget(invokeInfo.getOutputsId(), BindingDataStore.RETURN_NAME, method.getMethod().getReturnType(), true);
             }
+
             return invokeInfo;
         } catch (Exception ex) {
             ExceptionUtils.rethrow(ex);
