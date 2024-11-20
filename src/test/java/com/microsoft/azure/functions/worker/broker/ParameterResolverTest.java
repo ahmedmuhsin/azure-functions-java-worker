@@ -56,7 +56,9 @@ public class ParameterResolverTest {
 
     @Test
     public void testResolveArgumentsHasImplicitOutputTrue() throws Exception {
-        Method testMethod = this.getClass().getDeclaredMethod("testMethod");
+        Method testMethod = this.getClass().getDeclaredMethod("testMethodVoid");
+        when(methodBindInfo.hasNonVoidReturnType()).thenCallRealMethod();
+        when(methodBindInfo.hasEffectiveReturnType()).thenCallRealMethod();
         when(methodBindInfo.hasImplicitOutput()).thenReturn(true);
         when(methodBindInfo.getMethod()).thenReturn(testMethod);
         when(methodBindInfo.getParams()).thenReturn(new ArrayList<>());
@@ -66,7 +68,9 @@ public class ParameterResolverTest {
 
     @Test
     public void testResolveArgumentsHasImplicitOutputFalse() throws Exception {
-        Method testMethod = this.getClass().getDeclaredMethod("testMethod");
+        Method testMethod = this.getClass().getDeclaredMethod("testMethodVoid");
+        when(methodBindInfo.hasNonVoidReturnType()).thenCallRealMethod();
+        when(methodBindInfo.hasEffectiveReturnType()).thenCallRealMethod();
         when(methodBindInfo.hasImplicitOutput()).thenReturn(false);
         when(methodBindInfo.getMethod()).thenReturn(testMethod);
         when(methodBindInfo.getParams()).thenReturn(new ArrayList<>());
@@ -74,5 +78,30 @@ public class ParameterResolverTest {
         assertFalse(executionContextDataSource.getDataStore().getDataTargetTypedValue(BindingDataStore.RETURN_NAME).isPresent());
     }
 
-    public void testMethod() {}
+    @Test
+    public void testResolveArgumentsNonVoidReturnTypeTrue() throws Exception {
+        Method testMethod = this.getClass().getDeclaredMethod("testMethodNonVoid");
+        when(methodBindInfo.getMethod()).thenReturn(testMethod);
+        when(methodBindInfo.getParams()).thenReturn(new ArrayList<>());
+        when(methodBindInfo.hasNonVoidReturnType()).thenCallRealMethod(); // Ensures real logic is executed
+        when(methodBindInfo.hasImplicitOutput()).thenReturn(false);
+        when(methodBindInfo.hasEffectiveReturnType()).thenCallRealMethod();
+        ParameterResolver.resolveArguments(executionContextDataSource);
+        assertTrue(executionContextDataSource.getDataStore().getDataTargetTypedValue(BindingDataStore.RETURN_NAME).isPresent());
+    }
+
+    @Test
+    public void testResolveArgumentsNonVoidReturnTypeFalse() throws Exception {
+        Method testMethod = this.getClass().getDeclaredMethod("testMethodVoid");
+        when(methodBindInfo.getMethod()).thenReturn(testMethod);
+        when(methodBindInfo.getParams()).thenReturn(new ArrayList<>());
+        when(methodBindInfo.hasNonVoidReturnType()).thenCallRealMethod(); // Ensures real logic is executed
+        when(methodBindInfo.hasImplicitOutput()).thenReturn(false);
+        when(methodBindInfo.hasEffectiveReturnType()).thenCallRealMethod();
+        ParameterResolver.resolveArguments(executionContextDataSource);
+        assertFalse(executionContextDataSource.getDataStore().getDataTargetTypedValue(BindingDataStore.RETURN_NAME).isPresent());
+    }
+
+    public void testMethodVoid() {}
+    public String testMethodNonVoid() { return "test"; }
 }
