@@ -1,9 +1,12 @@
+parameters:
+  poolName: ''
+
 jobs:
   - job: "TestLinux"
     displayName: 'Test java worker - Linux'
 
     pool:
-      name: 1es-pool-azfunc-public
+      name: ${{ parameters.poolName }}
       image: 1es-ubuntu-22.04
       os: linux
 

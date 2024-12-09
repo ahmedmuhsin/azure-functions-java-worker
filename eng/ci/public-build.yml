@@ -53,9 +53,12 @@ extends:
         dependsOn: Build
         jobs:
           - template: /eng/ci/templates/jobs/run-emulated-tests-windows.yml@self
+            parameters:
+              poolName: 1es-pool-azfunc-public
 
       - stage: TestLinux
-        dependsOn:
-          - TestWindows
+        dependsOn: Build
         jobs:
           - template: /eng/ci/templates/jobs/run-emulated-tests-linux.yml@self
+            parameters:
+              poolName: 1es-pool-azfunc-public

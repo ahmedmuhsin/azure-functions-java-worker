@@ -1,9 +1,12 @@
+parameters:
+  poolName: ''
+
 jobs:
   - job: "TestWindows"
     displayName: 'Test java worker - Windows'
 
     pool:
-      name: 1es-pool-azfunc-public
+      name: ${{ parameters.poolName }}
       image: 1es-windows-2022
       os: windows
 
