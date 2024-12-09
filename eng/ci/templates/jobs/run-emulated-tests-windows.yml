@@ -17,7 +17,7 @@ jobs:
       ApplicationInsightAgentVersion: 3.5.4
 
     strategy:
-      maxParallel: 1
+      maxParallel: 4
       matrix:
         open-jdk-8-windows:
           JDK_DOWNLOAD_LINK: 'https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u392-b08/OpenJDK8U-jdk_x64_windows_hotspot_8u392b08.zip'
