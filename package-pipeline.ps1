@@ -5,20 +5,16 @@ param (
 # A function that checks exit codes and fails script if an error is found 
 function StopOnFailedExecution {
   if ($LastExitCode) 
-  { 
+  {
     exit $LastExitCode 
   }
 }
 
-$ApplicationInsightsAgentVersion = '3.5.4'
-$ApplicationInsightsAgentFilename = "applicationinsights-agent-${ApplicationInsightsAgentVersion}.jar"
-$ApplicationInsightsAgentUrl = "https://repo1.maven.org/maven2/com/microsoft/azure/applicationinsights-agent/${ApplicationInsightsAgentVersion}/${ApplicationInsightsAgentFilename}"
-
-Write-Host "Building azure-functions-java-worker" 
-mvn clean package --no-transfer-progress -B
+Write-Host "Building azure-functions-java-worker with appinsights profile"
+mvn clean package --no-transfer-progress -B -P appinsights
 StopOnFailedExecution
 
-Write-Host "Creating nuget package Microsoft.Azure.Functions.JavaWorker" 
+Write-Host "Creating nuget package Microsoft.Azure.Functions.JavaWorker"
 Write-Host "buildNumber: " $buildNumber
 Get-Command nuget
 StopOnFailedExecution
@@ -30,12 +26,13 @@ copy-item ./worker.config.json pkg
 copy-item ./tools/AzureFunctionsJavaWorker.nuspec pkg/
 copy-item ./annotationLib pkg/annotationLib -Recurse
 
-# Download application insights agent from maven central
-$ApplicationInsightsAgentFile = [System.IO.Path]::Combine($PSScriptRoot, $ApplicationInsightsAgentFilename)
+# locate the agent jar produced by the `appinsights` Maven profile
+$ApplicationInsightsAgentFile = [System.IO.Path]::Combine($PSScriptRoot, 'target', 'agent', 'applicationinsights-agent.jar')
 
-# local testing cleanup
-if (Test-Path -Path $ApplicationInsightsAgentFile) {
-    Remove-Item -Path $ApplicationInsightsAgentFile
+if (!(Test-Path -Path $ApplicationInsightsAgentFile)) {
+    Write-Host "Error: $ApplicationInsightsAgentFile not found."
+    Write-Host "Make sure you enabled the 'appinsights' Maven profile that copies the AI agent to target/agent/."
+    exit 1
 }
 
 # local testing cleanup
@@ -56,20 +53,6 @@ if (-not(Test-Path -Path $extract)) {
     exit 1
 }
 
-echo "Start downloading '$ApplicationInsightsAgentUrl' to '$PSScriptRoot'"
-try {
-    Invoke-WebRequest -Uri $ApplicationInsightsAgentUrl -OutFile $ApplicationInsightsAgentFile
-} catch {
-    echo "An error occurred. Download fails" $ApplicationInsightsAgentFile
-    echo "Exiting"
-    exit 1
-}
-
-if (-not(Test-Path -Path $ApplicationInsightsAgentFile)) {
-    echo "$ApplicationInsightsAgentFile do not exist."
-    exit 1
-}
-
 echo "Start extracting content from $ApplicationInsightsAgentFilename to extract folder"
 cd -Path $extract -PassThru
 jar xf $ApplicationInsightsAgentFile
@@ -81,14 +64,6 @@ Remove-Item $extract\META-INF\MSFTSIG.*
 $manifest = "$extract\META-INF\MANIFEST.MF"
 $newContent = (Get-Content -Raw $manifest | Select-String -Pattern '(?sm)^(.*?\r?\n)\r?\n').Matches[0].Groups[1].Value
 Set-Content -Path $manifest $newContent
-
-Remove-Item $ApplicationInsightsAgentFile
-if (-not(Test-Path -Path $ApplicationInsightsAgentFile)) {
-    echo "Delete the original $ApplicationInsightsAgentFilename successfully"
-} else {
-    echo "Fail to delete original source $ApplicationInsightsAgentFilename"
-    exit 1
-}
 
 $agent = new-item -type directory -force $PSScriptRoot\agent
 $filename = "applicationinsights-agent.jar"

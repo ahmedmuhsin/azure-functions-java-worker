@@ -20,6 +20,7 @@
     <azure.functions.java.library.version>2.2.0</azure.functions.java.library.version>
     <jupiter.version>5.9.1</jupiter.version>
     <mockito-core.version>4.11.0</mockito-core.version>
+    <appinsights.agents.version>3.6.2</appinsights.agents.version>
   </properties>
   <licenses>
     <license>
@@ -321,4 +322,51 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>appinsights</id>
+      <dependencies>
+        <dependency>
+          <groupId>com.microsoft.azure</groupId>
+          <artifactId>applicationinsights-agent</artifactId>
+          <version>${appinsights.agents.version}</version>
+          <scope>provided</scope>
+        </dependency>
+      </dependencies>
+
+      <build>
+        <plugins>
+          <!--
+            Use the Maven Dependency Plugin to copy the agent from your local Maven repo
+            into target/agent/applicationinsights-agent.jar at package time.
+          -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.5.0</version>
+            <executions>
+              <execution>
+                <id>copy-ai-agent</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>copy</goal>
+                </goals>
+                <configuration>
+                  <artifactItems>
+                    <artifactItem>
+                      <groupId>com.microsoft.azure</groupId>
+                      <artifactId>applicationinsights-agent</artifactId>
+                      <version>${appinsights.agents.version}</version>
+                      <outputDirectory>${project.build.directory}/agent</outputDirectory>
+                      <destFileName>applicationinsights-agent.jar</destFileName>
+                    </artifactItem>
+                  </artifactItems>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
