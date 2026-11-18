@@ -1,0 +1,119 @@
+# Builds one Azure Functions Java library at a pinned commit and stages a partner style drop.
+# Each library has a small template under eng/release/libraries that calls this one and can add
+# its own steps through preBuildSteps.
+parameters:
+  - name: id
+    type: string
+  - name: version
+    type: string
+  - name: commit
+    type: string
+  - name: repository          # repository resource alias declared in java-release.yml
+    type: string
+  - name: gitHubRepo
+    type: string
+  - name: groupId
+    type: string
+    default: com.microsoft.azure.functions
+  - name: artifactId
+    type: string
+  - name: modulePath
+    type: string
+    default: '.'
+  - name: notesPaths          # paths whose commits go into the release notes. Defaults to modulePath.
+    type: object
+    default: []
+  - name: legacyTagPattern    # regex for tags created before <artifactId>-<version>. One capture group.
+    type: string
+    default: ''
+  - name: makeLatest          # false for repos that hold several libraries
+    type: boolean
+    default: true
+  - name: jdk
+    type: string
+    default: '11'
+  - name: mavenGoals
+    type: string
+    default: 'clean package'
+  - name: preBuildSteps
+    type: stepList
+    default: []
+
+jobs:
+  - job: Build_${{ replace(parameters.id, '-', '_') }}
+    displayName: Build ${{ parameters.artifactId }} ${{ parameters.version }}
+    pool:
+      name: 1es-pool-azfunc
+      image: 1es-ubuntu-22.04
+      os: linux
+
+    templateContext:
+      outputs:
+        - output: pipelineArtifact
+          targetPath: $(Build.ArtifactStagingDirectory)/drop
+          artifactName: drop-${{ parameters.id }}
+
+    variables:
+      repoPath: $(Pipeline.Workspace)/src
+      scripts: $(Pipeline.Workspace)/tools/eng/release/scripts
+
+    steps:
+      - checkout: self
+        path: tools
+      - checkout: ${{ parameters.repository }}
+        path: src
+        fetchDepth: 0
+        fetchTags: true
+        persistCredentials: false
+
+      - pwsh: |
+          $sha = '${{ parameters.commit }}'
+          if ($sha -notmatch '^[0-9a-f]{40}$') { throw "commit must be a full 40 character SHA. Got '$sha'." }
+          git -C '$(repoPath)' checkout --detach $sha
+          if ($LASTEXITCODE) { throw "Commit $sha not found." }
+          $branches = git -C '$(repoPath)' branch -r --contains $sha --format '%(refname:short)'
+          if (-not ($branches | Where-Object { $_ -match '^origin/(dev|main|release/.+)$' })) {
+            throw "Commit $sha is not on dev, main or a release branch."
+          }
+        displayName: Check out ${{ parameters.commit }}
+
+      - task: JavaToolInstaller@0
+        displayName: Use JDK ${{ parameters.jdk }}
+        inputs:
+          versionSpec: ${{ parameters.jdk }}
+          jdkArchitectureOption: x64
+          jdkSourceOption: PreInstalled
+
+      # Maven resolves plugins before a pom's repositories are honored, so the CFS mirror goes in settings.xml.
+      - pwsh: |
+          New-Item -ItemType Directory -Path "$HOME/.m2" -Force | Out-Null
+          Copy-Item '$(repoPath)/settings.xml' "$HOME/.m2/settings.xml" -Force
+        displayName: Install Maven settings.xml
+      - task: MavenAuthenticate@0
+        displayName: Authenticate Maven to CFS
+        inputs:
+          artifactsFeeds: upstream-public
+
+      - ${{ parameters.preBuildSteps }}
+
+      - pwsh: |
+          mvn -B -ntp -f '$(repoPath)/${{ parameters.modulePath }}/pom.xml' ${{ parameters.mavenGoals }}
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+        displayName: Build ${{ parameters.artifactId }}
+
+      - pwsh: |
+          $paths = '${{ join(',', parameters.notesPaths) }}' -split ',' | Where-Object { $_ }
+          if (-not $paths) { $paths = @('${{ parameters.modulePath }}') }
+          & '$(scripts)/Get-ReleaseNotes.ps1' -RepoPath '$(repoPath)' -GitHubRepo '${{ parameters.gitHubRepo }}' `
+            -GroupId '${{ parameters.groupId }}' -ArtifactId '${{ parameters.artifactId }}' -Version '${{ parameters.version }}' `
+            -Commit '${{ parameters.commit }}' -ModulePath '${{ parameters.modulePath }}' -NotesPaths $paths `
+            -LegacyTagPattern '${{ parameters.legacyTagPattern }}' -OutFile '$(Agent.TempDirectory)/release-notes.md'
+          Get-Content '$(Agent.TempDirectory)/release-notes.md'
+        displayName: Generate release notes
+
+      - pwsh: |
+          & '$(scripts)/Stage-MavenDrop.ps1' -RepoPath '$(repoPath)' -GitHubRepo '${{ parameters.gitHubRepo }}' `
+            -GroupId '${{ parameters.groupId }}' -ArtifactId '${{ parameters.artifactId }}' -Version '${{ parameters.version }}' `
+            -ModulePath '${{ parameters.modulePath }}' -NotesFile '$(Agent.TempDirectory)/release-notes.md' `
+            -MakeLatest $${{ parameters.makeLatest }} -OutputPath '$(Build.ArtifactStagingDirectory)/drop'
+        displayName: Stage drop

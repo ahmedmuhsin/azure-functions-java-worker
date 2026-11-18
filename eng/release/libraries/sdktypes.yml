@@ -1,0 +1,19 @@
+# azure-functions-java-sdktypes. Add library specific build steps under preBuildSteps.
+parameters:
+  - name: version
+    type: string
+  - name: commit
+    type: string
+
+jobs:
+  - template: /eng/release/templates/build-library.yml@self
+    parameters:
+      id: sdktypes
+      version: ${{ parameters.version }}
+      commit: ${{ parameters.commit }}
+      repository: java-additions
+      gitHubRepo: Azure/azure-functions-java-additions
+      artifactId: azure-functions-java-sdktypes
+      modulePath: azure-functions-java-sdktypes
+      makeLatest: false
+      jdk: '11'

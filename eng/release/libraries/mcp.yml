@@ -1,0 +1,19 @@
+# azure-functions-java-mcp. Add library specific build steps under preBuildSteps.
+parameters:
+  - name: version
+    type: string
+  - name: commit
+    type: string
+
+jobs:
+  - template: /eng/release/templates/build-library.yml@self
+    parameters:
+      id: mcp
+      version: ${{ parameters.version }}
+      commit: ${{ parameters.commit }}
+      repository: java-additions
+      gitHubRepo: Azure/azure-functions-java-additions
+      artifactId: azure-functions-java-mcp
+      modulePath: azure-functions-java-mcp
+      makeLatest: false
+      jdk: '17'

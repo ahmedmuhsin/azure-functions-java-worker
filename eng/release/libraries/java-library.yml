@@ -1,0 +1,20 @@
+# azure-functions-java-library. Add library specific build steps under preBuildSteps.
+parameters:
+  - name: version
+    type: string
+  - name: commit
+    type: string
+
+jobs:
+  - template: /eng/release/templates/build-library.yml@self
+    parameters:
+      id: java-library
+      version: ${{ parameters.version }}
+      commit: ${{ parameters.commit }}
+      repository: java-library
+      gitHubRepo: Azure/azure-functions-java-library
+      artifactId: azure-functions-java-library
+      modulePath: .
+      legacyTagPattern: '^(\d+\.\d+\.\d+)$'
+      makeLatest: true
+      jdk: '11'
