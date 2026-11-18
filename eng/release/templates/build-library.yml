@@ -87,7 +87,7 @@ jobs:
       # Maven resolves plugins before a pom's repositories are honored, so the CFS mirror goes in settings.xml.
       - pwsh: |
           New-Item -ItemType Directory -Path "$HOME/.m2" -Force | Out-Null
-          Copy-Item '$(repoPath)/settings.xml' "$HOME/.m2/settings.xml" -Force
+          Copy-Item '$(Pipeline.Workspace)/tools/settings.xml' "$HOME/.m2/settings.xml" -Force
         displayName: Install Maven settings.xml
       - task: MavenAuthenticate@0
         displayName: Authenticate Maven to CFS
